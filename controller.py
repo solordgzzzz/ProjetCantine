@@ -53,8 +53,5 @@ class Controller:
         self.interfaceVotes.envoyerQuestion(self.question, self.listeChoix)
 
 
-
-
-
 app = Controller()
 app.voter()
