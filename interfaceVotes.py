@@ -1,5 +1,6 @@
 import random, json
 from paho.mqtt import client as mqtt_client
+import json
 
 class InterfaceVotes:
 
@@ -58,6 +59,13 @@ class InterfaceVotes:
         status = result[0]
         
         return status, self.topic, msg
+
+    def envoyerQuestion(self, question, choix):
+        message= {"question": question, "choix": choix}
+        self.client.publish(self.TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
+
+
+
 
 
 
