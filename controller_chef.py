@@ -32,4 +32,4 @@ class Controller_chef:
 
 
 app = Controller_chef()
-app.modifierQuestion("salut", ['Éclaté', 'bof', 'Bon', 'Excellent'])
+app.modifierQuestion()
