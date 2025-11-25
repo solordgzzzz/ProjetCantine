@@ -26,8 +26,14 @@ class InterfaceChef:
         self.client.on_message = self.on_message
 
         self.controller = controller
-
+        self.nombreVote = 0
         self.dernier_vote = "sfsff"
+
+        self.nb_choix1 = 0
+        self.nb_choix2 = 0
+        self.nb_choix3 = 0
+        self.nb_choix4 = 0
+
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -39,11 +45,9 @@ class InterfaceChef:
             print(f"Failed to connect, return code {rc}")
 
     def on_message(self, client, userdata, msg):
-        self.dernier_vote = (f"Message reçu sur {msg.topic} : {msg.payload.decode()}")
+        vote_recu = msg.payload.decode()
+        self.dernier_vote = (f"Message reçu sur {msg.topic} : {vote_recu}")
         print(self.dernier_vote)
-        
-
-
 
     def connecter(self):
         self.client.connect(self.BROKER, self.PORT)
@@ -53,15 +57,10 @@ class InterfaceChef:
         self.client.disconnect()
         self.client.loop_stop()
 
-    def envoyerVote(self, vote):
-        msg = vote.toJson()
-        result = self.client.publish(self.topic, msg)
-        status = result[0]
-        return status, self.topic, msg
-
     def envoyerQuestion(self, question, choix):
         message = {"question": question, "choix": choix}
         self.client.publish(self.TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
 
     def lireVote(self):
         return self.dernier_vote
+    

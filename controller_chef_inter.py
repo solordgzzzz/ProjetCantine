@@ -1,34 +1,117 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
-import paho.mqtt.client as mqtt
-import json
+import random, json
+from paho.mqtt import client as mqtt_client
+from vote import Vote
 
+# --- Config MQTT ---
 BROKER = '192.168.190.17'
 PORT = 1883
 TOPIC_QUESTION = 'cantine/question'
 USERNAME = "crdg"
 PASSWORD = "crdg*123"
 
+# Palette élégante
+BG_COLOR = "#1f2937"          # Fond principal (gris foncé)
+CARD_COLOR = "#374151"        # Cartes de vote (gris légèrement clair)
+CARD_HIGHLIGHT = "#2563eb"    # Dernier vote (bleu doux)
+TEXT_COLOR = "#f9fafb"        # Texte clair
+BUTTON_COLOR = "#3b82f6"      # Bouton bleu doux
+BUTTON_HOVER = "#2563eb"
 
-class IHM:
+class InterfaceChef:
+    """Client MQTT pour recevoir les votes et les transmettre au controller."""
+
     def __init__(self, controller):
         self.controller = controller
+        self.topic_vote = 'cantine/pupitre/+/vote'
+        self.client_id = f'Chef-{random.randint(0, 1000)}'
+        self.client = mqtt_client.Client(client_id=self.client_id)
+        self.client.username_pw_set(USERNAME, PASSWORD)
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        self.client.connect(BROKER, PORT)
+        self.client.loop_start()
 
+    def on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            print("Connecté au broker MQTT pour les votes")
+            self.client.subscribe(self.topic_vote)
+        else:
+            print(f"Erreur connexion MQTT, code {rc}")
+
+    def on_message(self, client, userdata, msg):
+        try:
+            payload_str = msg.payload.decode('utf-8').strip()
+            if not payload_str:
+                return
+            try:
+                payload = json.loads(payload_str)
+                vote = Vote.fromJson(payload)
+                vote_str = f"ID: {vote.id} → {vote.choix}"
+            except Exception:
+                vote_str = f"Message reçu: {payload_str}"
+            self.controller.ajouter_vote(vote_str)
+        except Exception as e:
+            print(f"Erreur traitement vote: {e}")
+
+    def envoyerVote(self, vote):
+        msg = vote.toJson()
+        self.client.publish(f'cantine/pupitre/{vote.id}/vote', msg)
+        vote_str = f"TON VOTE: ID={vote.id} → {vote.choix}"
+        self.controller.ajouter_vote(vote_str)
+
+    def envoyerQuestion(self, question, choix):
+        message = {"question": question, "choix": choix}
+        self.client.publish(TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
+
+
+class IHM:
+    """Dashboard moderne et élégant Tkinter."""
+
+    def __init__(self, controller):
+        self.controller = controller
         self.root = tk.Tk()
-        self.root.title("Système de votes - Chef")
+        self.root.title("📊 Dashboard Votes Cantine")
+        self.root.configure(bg=BG_COLOR)
+        self.root.geometry("900x600")
+        self.root.resizable(False, False)
 
-        # Label pour afficher la question
-        self.label_question = tk.Label(self.root, text="", font=("Arial", 14))
-        self.label_question.pack(pady=20)
+        self.font_title = ("Helvetica", 18, "bold")
+        self.font_vote = ("Helvetica", 14)
+        self.font_button = ("Helvetica", 13, "bold")
 
-        # Bouton pour modifier la question
+        # Label question
+        self.label_question = tk.Label(self.root, text="", font=self.font_title,
+                                       fg=TEXT_COLOR, bg=BG_COLOR)
+        self.label_question.pack(pady=15)
+
+        # Frame pour les votes
+        self.frame_votes = tk.Frame(self.root, bg=BG_COLOR)
+        self.frame_votes.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        # Bouton modifier question
         self.btn_modifier = tk.Button(
             self.root,
             text="Modifier la question",
-            font=("Arial", 12),
+            font=self.font_button,
+            bg=BUTTON_COLOR,
+            fg="white",
+            activebackground=BUTTON_HOVER,
+            activeforeground="white",
+            padx=15,
+            pady=8,
+            bd=0,
+            relief="flat",
             command=self.demander_modification
         )
-        self.btn_modifier.pack(pady=10)
+        self.btn_modifier.pack(pady=15)
+
+        # Compteur de votes
+        self.vote_count = 0
+        self.label_count = tk.Label(self.root, text=f"Votes reçus : {self.vote_count}",
+                                    font=self.font_vote, fg=TEXT_COLOR, bg=BG_COLOR)
+        self.label_count.pack(pady=5)
 
     def demander_choix(self, question, listeChoix=None):
         self.label_question.config(text=question)
@@ -36,17 +119,32 @@ class IHM:
     def afficher_message(self, message):
         messagebox.showinfo("Information", message)
 
+    def ajouter_vote(self, vote_str):
+        """Ajoute le vote reçu avec style élégant."""
+        self.root.after(0, self._add_vote_card, vote_str)
+
+    def _add_vote_card(self, vote_str):
+        # Chaque nouveau vote est mis en valeur par une carte bleue douce
+        card = tk.Label(self.frame_votes, text=vote_str, font=self.font_vote,
+                        bg=CARD_COLOR, fg=TEXT_COLOR, padx=10, pady=5, bd=0, relief="flat")
+        card.pack(pady=3, fill=tk.X, padx=20)
+
+        # Animation flash pour le dernier vote
+        card.after(100, lambda: card.config(bg=CARD_HIGHLIGHT))
+        card.after(700, lambda: card.config(bg=CARD_COLOR))
+
+        self.vote_count += 1
+        self.label_count.config(text=f"Votes reçus : {self.vote_count}")
+
     def demander_modification(self):
         question = simpledialog.askstring("Nouvelle question", "Entrez la nouvelle question :")
         if not question:
             return
-        
         choix_str = simpledialog.askstring(
-            "Choix", "Entrez les choix séparés par des virgules (ex: Éclaté,bof,Bon,Excellent) :"
+            "Choix", "Entrez les choix séparés par des virgules :"
         )
         if not choix_str:
             return
-
         listeChoix = [c.strip() for c in choix_str.split(",")]
         self.controller.modifierQuestion(question, listeChoix)
 
@@ -54,32 +152,16 @@ class IHM:
         self.root.mainloop()
 
 
-class Controller_chef:
-    def __init__(self, mqtt_broker=BROKER, mqtt_port=PORT, topic=TOPIC_QUESTION,
-                 username=USERNAME, password=PASSWORD):
+class ControllerChef:
+    """Contrôleur principal avec dashboard pro."""
+
+    def __init__(self):
         self.question = "Comment avez-vous trouvé le repas ?"
         self.listeChoix = ["Éclaté", "bof", "Bon", "Excellent"]
-        self.topic = topic
-
-        # MQTT avec authentification
-        self.client = mqtt.Client()
-        self.client.username_pw_set(username, password)  # <-- Authentification
-        self.client.on_connect = self.on_connect
-        self.client.connect(mqtt_broker, mqtt_port, 60)
-        self.client.loop_start()  # Assure que la boucle tourne en arrière-plan
-
-        # Interface
         self.ihm = IHM(self)
         self.ihm.demander_choix(self.question, self.listeChoix)
-
-        # Publier la question initiale
+        self.interface_mqtt = InterfaceChef(self)
         self.publier_question()
-
-    def on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
-            print("Connecté au broker MQTT")
-        else:
-            print(f"Erreur de connexion MQTT, code: {rc}")
 
     def modifierQuestion(self, question, listeChoix):
         self.question = question
@@ -89,23 +171,19 @@ class Controller_chef:
         self.publier_question()
 
     def publier_question(self):
-        """Publie la question et les choix sur MQTT au format JSON"""
-        message = json.dumps({
-            "question": self.question,
-            "choix": self.listeChoix
-        }, ensure_ascii=False)  # <-- garder les accents correctement
-        result = self.client.publish(self.topic, message)
-        if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"Question publiée sur MQTT : {message}")
-        else:
-            print("Erreur lors de la publication MQTT")
+        self.interface_mqtt.envoyerQuestion(self.question, self.listeChoix)
+        print(f"Question publiée : {self.question} / {self.listeChoix}")
 
+    def ajouter_vote(self, vote_str):
+        self.ihm.ajouter_vote(vote_str)
+
+    def envoyer_vote(self, vote):
+        self.interface_mqtt.envoyerVote(vote)
 
     def start(self):
         self.ihm.start()
 
 
-# Lancer l'application
 if __name__ == "__main__":
-    app = Controller_chef()
+    app = ControllerChef()
     app.start()
