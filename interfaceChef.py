@@ -3,7 +3,7 @@ from paho.mqtt import client as mqtt_client
 from vote import Vote
 
 
-class InterfaceVotes:
+class InterfaceChef:
 
     BROKER = '192.168.190.17'
     PORT = 1883
@@ -13,7 +13,7 @@ class InterfaceVotes:
 
     def __init__(self, num_pupitre, controller):
         # topic de vote pour ce pupitre
-        self.topic = f'cantine/pupitre/{num_pupitre}/vote'
+        self.topic = f'cantine/pupitre/+/vote'
 
         # client MQTT
         self.client_id = f'Cantine-{random.randint(0, 1000)}'
@@ -33,16 +33,17 @@ class InterfaceVotes:
         if rc == 0:
             print("Connected to MQTT Broker!")
 
-            self.client.subscribe(self.TOPIC_QUESTION)
-
             self.client.subscribe(self.topic)
 
         else:
             print(f"Failed to connect, return code {rc}")
 
     def on_message(self, client, userdata, msg):
-        self.dernier_vote = (f"Message reçu sur{msg.topic} : {msg.payload.decode()}")
+        self.dernier_vote = (f"Message reçu sur {msg.topic} : {msg.payload.decode()}")
+        print(self.dernier_vote)
         
+
+
 
     def connecter(self):
         self.client.connect(self.BROKER, self.PORT)
@@ -57,3 +58,10 @@ class InterfaceVotes:
         result = self.client.publish(self.topic, msg)
         status = result[0]
         return status, self.topic, msg
+
+    def envoyerQuestion(self, question, choix):
+        message = {"question": question, "choix": choix}
+        self.client.publish(self.TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
+
+    def lireVote(self):
+        return self.dernier_vote

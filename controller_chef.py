@@ -1,4 +1,4 @@
-from interfaceVotes import InterfaceVotes
+from interfaceChef import InterfaceChef
 from vote import Vote
 from rfid import RFID
 from ihm_inter import IHM
@@ -14,8 +14,8 @@ class Controller_chef:
         self.rfid = RFID()
         self.ihm = IHM(self)
 
-        self.interfaceVotes = InterfaceVotes(1, self)
-        self.interfaceVotes.connecter()
+        self.InterfaceChef = InterfaceChef(1, self)
+        self.InterfaceChef.connecter()
 
         # affichage initial
         self.ihm.demander_choix(self.question, self.listeChoix)
@@ -25,11 +25,11 @@ class Controller_chef:
         self.listeChoix = listeChoix
         self.ihm.demander_choix(self.question, self.listeChoix)
         self.ihm.afficher_message("Une nouvelle question a été reçue!")
-        self.interfaceVotes.envoyerQuestion(self.question, self.listeChoix)
+        self.InterfaceChef.envoyerQuestion(self.question, self.listeChoix)
 
-    def visualiserVotes(self):
-        pass
-
+    def visualiserVote(self):
+        vote = self.InterfaceChef.lireVote()
 
 app = Controller_chef()
-app.modifierQuestion()
+while True:
+    app.visualiserVote()
