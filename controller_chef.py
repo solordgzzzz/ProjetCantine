@@ -1,6 +1,6 @@
 from interfaceChef import InterfaceChef
 from vote import Vote
-from rfid import RFID
+from rfid2 import RFID2
 from ihm_inter import IHM
 import time
 
@@ -11,7 +11,7 @@ class Controller_chef:
         self.question = "Comment avez vous trouvé le repas ?"
         self.listeChoix = ['Éclaté', 'bof', 'Bon', 'Excellent']
 
-        self.rfid = RFID()
+        self.rfid = RFID2()
         self.ihm = IHM(self)
 
         self.InterfaceChef = InterfaceChef(1, self)

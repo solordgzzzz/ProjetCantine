@@ -9,6 +9,7 @@ TEXT_COLOR = "#f9fafb"        # Texte principal
 MSG_COLOR = "#10b981"         # Message succès (vert doux)
 CARD_BORDER = "#4b5563"
 
+
 class IHM:
     """Interface de vote RFID avec design pro et texte statique."""
 
@@ -17,8 +18,17 @@ class IHM:
         self.root = tk.Tk()
         self.root.title("📋 Système de Vote RFID")
         self.root.configure(bg=BG_COLOR)
-        self.root.geometry("550x500")
-        self.root.resizable(False, False)
+
+        # Ouvrir en plein écran et s'adapte à toutes les résolutions
+        try:
+            self.root.state('zoomed')  # Windows
+        except:
+            self.root.attributes('-fullscreen', True)  # Mac / Linux
+
+        self.root.resizable(True, True)
+
+        # Sortir du plein écran avec ECHAP
+        self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
 
         self.font_title = ("Helvetica", 18, "bold")
         self.font_button = ("Helvetica", 14, "bold")
@@ -30,7 +40,7 @@ class IHM:
 
         self.question_label = tk.Label(
             self.question_frame, text="", font=self.font_title,
-            fg=TEXT_COLOR, bg=CARD_COLOR, wraplength=500, justify="center", pady=20
+            fg=TEXT_COLOR, bg=CARD_COLOR, wraplength=800, justify="center", pady=20
         )
         self.question_label.pack()
 
@@ -41,7 +51,7 @@ class IHM:
         # Label pour les messages
         self.msg_label = tk.Label(
             self.root, text="", font=self.font_msg,
-            fg=MSG_COLOR, bg=BG_COLOR, wraplength=500, justify="center"
+            fg=MSG_COLOR, bg=BG_COLOR, wraplength=800, justify="center"
         )
         self.msg_label.pack(pady=20)
 
