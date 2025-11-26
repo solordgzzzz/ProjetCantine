@@ -52,8 +52,9 @@ class InterfaceVotes:
         self.client.disconnect()
         self.client.loop_stop()
 
-    def envoyerVote(self, vote):
-        msg = vote.toJson()
-        result = self.client.publish(self.topic, msg)
+    def envoyerVote(self, vote: Vote):
+        msg = {"id_votant": vote.id_votant,"choix": vote.choix}
+        msg_json = json.dumps(msg, ensure_ascii=False)
+        result = self.client.publish(self.topic, msg_json)
         status = result[0]
-        return status, self.topic, msg
+        return status, self.topic, msg_json

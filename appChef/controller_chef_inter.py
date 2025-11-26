@@ -4,6 +4,7 @@ import random, json
 from paho.mqtt import client as mqtt_client
 from vote import Vote
 
+
 # --- Config MQTT ---
 BROKER = '192.168.190.17'
 PORT = 1883
@@ -11,13 +12,16 @@ TOPIC_QUESTION = 'cantine/question'
 USERNAME = "crdg"
 PASSWORD = "crdg*123"
 
+
 # Palette élégante
-BG_COLOR = "#1f2937"          # Fond principal (gris foncé)
-CARD_COLOR = "#374151"        # Cartes de vote (gris légèrement clair)
-CARD_HIGHLIGHT = "#2563eb"    # Dernier vote (bleu doux)
-TEXT_COLOR = "#f9fafb"        # Texte clair
-BUTTON_COLOR = "#3b82f6"      # Bouton bleu doux
+BG_COLOR = "#1f2937"
+CARD_COLOR = "#374151"
+CARD_HIGHLIGHT = "#2563eb"
+TEXT_COLOR = "#f9fafb"
+BUTTON_COLOR = "#3b82f6"
+BUTTON_COLOR_STAT = "#C72626"  
 BUTTON_HOVER = "#2563eb"
+
 
 class InterfaceChef:
     """Client MQTT pour recevoir et envoyer les votes."""
@@ -25,6 +29,8 @@ class InterfaceChef:
     def __init__(self, controller):
         self.controller = controller
         self.topic_vote = 'cantine/pupitre/+/vote'
+        self.topic_stats = 'cantine/stats_votes'
+        self.stats = None  # Mis à jour automatiquement
         self.client_id = f'Chef-{random.randint(0, 1000)}'
         self.client = mqtt_client.Client(client_id=self.client_id)
         self.client.username_pw_set(USERNAME, PASSWORD)
@@ -32,11 +38,11 @@ class InterfaceChef:
         self.client.on_message = self.on_message
         self.client.connect(BROKER, PORT)
         self.client.loop_start()
-
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print("Connecté au broker MQTT pour les votes")
             self.client.subscribe(self.topic_vote)
+            self.client.subscribe(self.topic_stats)  # Écoute en continu
         else:
             print(f"Erreur connexion MQTT, code {rc}")
 
@@ -45,6 +51,17 @@ class InterfaceChef:
             payload_str = msg.payload.decode('utf-8').strip()
             if not payload_str:
                 return
+            
+            # ✅ Mise à jour SILENCIEUSE des statistiques
+            if msg.topic == self.topic_stats:
+                try:
+                    self.stats = json.loads(payload_str)
+                    # Pas de print ici - mise à jour silencieuse
+                except Exception as e:
+                    print(f"Erreur parsing stats: {e}")
+                return
+            
+            # Traiter les votes normaux
             try:
                 payload = json.loads(payload_str)
                 vote = Vote.fromJson(payload)
@@ -75,11 +92,10 @@ class IHM:
         self.root.title("📊 Dashboard Votes Cantine")
         self.root.configure(bg=BG_COLOR)
 
-        # --- 💡 FULLSCREEN ADAPTATIF ---
         try:
-            self.root.state('zoomed')  # Windows
+            self.root.state('zoomed')
         except:
-            self.root.attributes('-fullscreen', True)  # Linux / Mac
+            self.root.attributes('-fullscreen', True)
 
         self.root.resizable(True, True)
         self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
@@ -93,7 +109,7 @@ class IHM:
                                        fg=TEXT_COLOR, bg=BG_COLOR)
         self.label_question.pack(pady=15)
 
-        # --- Frame principale responsive
+        # Frame principale
         self.frame_container = tk.Frame(self.root, bg=BG_COLOR)
         self.frame_container.pack(pady=10, fill=tk.BOTH, expand=True)
 
@@ -101,7 +117,7 @@ class IHM:
         self.canvas = tk.Canvas(self.frame_container, bg=BG_COLOR, highlightthickness=0)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Scrollbar verticale
+        # Scrollbar
         self.scrollbar = tk.Scrollbar(self.frame_container, orient=tk.VERTICAL, command=self.canvas.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -111,10 +127,13 @@ class IHM:
         self.canvas.create_window((0, 0), window=self.frame_votes, anchor="nw")
 
         self.frame_votes.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-
-        # Bouton modifier question (centré)
+        
+        self.bottom_frame = tk.Frame(self.root, bg=BG_COLOR)
+        self.bottom_frame.pack(pady=15)
+        
+        # Bouton : Modifier la question
         self.btn_modifier = tk.Button(
-            self.root,
+            self.bottom_frame,
             text="Modifier la question",
             font=self.font_button,
             bg=BUTTON_COLOR,
@@ -127,7 +146,24 @@ class IHM:
             relief="flat",
             command=self.demander_modification
         )
-        self.btn_modifier.pack(pady=15)
+        self.btn_modifier.pack(side="left", padx=10)
+
+        # Bouton : voir statistique
+        self.btn_statistique = tk.Button(
+            self.bottom_frame,
+            text="Voir statistique",
+            font=self.font_button,
+            bg=BUTTON_COLOR_STAT,
+            fg="white",
+            activebackground=BUTTON_HOVER,
+            activeforeground="white",
+            padx=20,
+            pady=10,
+            bd=0,
+            relief="flat",
+            command=self.voir_stat
+        )
+        self.btn_statistique.pack(side="left", padx=10)
 
         # Compteur de votes
         self.vote_count = 0
@@ -154,7 +190,7 @@ class IHM:
 
         self.vote_count += 1
         self.label_count.config(text=f"Votes reçus : {self.vote_count}")
-        self.canvas.yview_moveto(1.0)  # Scroll auto vers bas
+        self.canvas.yview_moveto(1.0)
 
     def demander_modification(self):
         question = simpledialog.askstring("Nouvelle question", "Entrez la nouvelle question :")
@@ -165,6 +201,41 @@ class IHM:
             return
         listeChoix = [c.strip() for c in choix_str.split(",")]
         self.controller.modifierQuestion(question, listeChoix)
+        
+    def voir_stat(self):
+        """Affiche les statistiques EN TEMPS RÉEL à chaque clic."""
+        stats = self.controller.obtenir_statistiques()
+        
+        if not stats or "stats" not in stats:
+            messagebox.showwarning("Statistiques", "Aucune statistique disponible pour le moment.")
+            return
+        
+        stats_list = stats["stats"]
+        if len(stats_list) < 2:
+            messagebox.showwarning("Statistiques", "Données insuffisantes.")
+            return
+        
+        total_votes = stats_list[-1]
+        votes_par_choix = stats_list[:-1]
+        
+        if total_votes == 0:
+            messagebox.showinfo("Statistiques", "Aucun vote enregistré.")
+            return
+        
+        # Calculer les pourcentages
+        message = "📊 Statistiques des votes\n\n"
+        choix_noms = self.controller.listeChoix if hasattr(self.controller, 'listeChoix') else None
+        
+        for i, nb_votes in enumerate(votes_par_choix):
+            pourcentage = (nb_votes / total_votes) * 100
+            if choix_noms and i < len(choix_noms):
+                nom_choix = choix_noms[i]
+                message += f"{nom_choix}: {nb_votes} votes ({pourcentage:.1f}%)\n"
+            else:
+                message += f"Choix {i+1}: {nb_votes} votes ({pourcentage:.1f}%)\n"
+        
+        message += f"\n✅ Total: {total_votes} votes"
+        messagebox.showinfo("Statistiques des votes", message)
 
     def start(self):
         self.root.mainloop()
@@ -195,6 +266,10 @@ class ControllerChef:
 
     def envoyer_vote(self, vote):
         self.interface_mqtt.envoyerVote(vote)
+    
+    def obtenir_statistiques(self):
+        """Retourne les stats actuelles (temps réel)."""
+        return self.interface_mqtt.stats
 
     def start(self):
         self.ihm.start()

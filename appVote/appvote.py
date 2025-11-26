@@ -3,15 +3,15 @@ from paho.mqtt import client as mqtt_client
 from vote import Vote
 
 
-class InterfaceChef:
+class AppVote:
 
     BROKER = '192.168.190.17'
     PORT = 1883
-    TOPIC_QUESTION = 'cantine/question'
+    TOPIC_VOTES = 'cantine/stats_votes'
     USERNAME = "crdg"
     PASSWORD = "crdg*123"
 
-    def __init__(self, num_pupitre, controller):
+    def __init__(self,controller):
         # topic de vote pour ce pupitre
         self.topic = f'cantine/pupitre/+/vote'
 
@@ -26,13 +26,7 @@ class InterfaceChef:
         self.client.on_message = self.on_message
 
         self.controller = controller
-        self.nombreVote = 0
-        self.dernier_vote = "sfsff"
-
-        self.nb_choix1 = 0
-        self.nb_choix2 = 0
-        self.nb_choix3 = 0
-        self.nb_choix4 = 0
+        self.dernier_vote = ""
 
 
     def on_connect(self, client, userdata, flags, rc):
@@ -45,9 +39,17 @@ class InterfaceChef:
             print(f"Failed to connect, return code {rc}")
 
     def on_message(self, client, userdata, msg):
-        vote_recu = msg.payload.decode()
-        self.dernier_vote = (f"Message reçu sur {msg.topic} : {vote_recu}")
-        print(self.dernier_vote)
+        vote_recu_str = msg.payload.decode()
+        print(f"Message reçu sur {msg.topic} : {vote_recu_str}")
+
+        vote_recu = json.loads(vote_recu_str)
+
+        choix = int(vote_recu['choix'])
+        
+
+        self.controller.calculer_statistiques(choix)                
+
+
 
     def connecter(self):
         self.client.connect(self.BROKER, self.PORT)
@@ -57,10 +59,6 @@ class InterfaceChef:
         self.client.disconnect()
         self.client.loop_stop()
 
-    def envoyerQuestion(self, question, choix):
-        message = {"question": question, "choix": choix}
-        self.client.publish(self.TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
-
-    def lireVote(self):
-        return self.dernier_vote
-    
+    def envoyerStats(self,nb_choix):
+        stats = {'stats': nb_choix}
+        return self.client.publish(self.TOPIC_VOTES, json.dumps(stats, ensure_ascii=False),qos= 1, retain=True)
