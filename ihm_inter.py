@@ -11,7 +11,7 @@ CARD_BORDER = "#4b5563"
 
 
 class IHM:
-    """Interface de vote RFID avec design pro et texte statique."""
+    """Interface de vote RFID avec design pro et texte centré."""
 
     def __init__(self, controller):
         self.controller = controller
@@ -32,7 +32,7 @@ class IHM:
 
         self.font_title = ("Helvetica", 18, "bold")
         self.font_button = ("Helvetica", 14, "bold")
-        self.font_msg = ("Helvetica", 13, "italic")
+        self.font_msg = ("Helvetica", 16, "italic")  # un peu plus grand pour centrage
 
         # Encadré question
         self.question_frame = tk.Frame(self.root, bg=CARD_COLOR, bd=2, relief="ridge")
@@ -48,12 +48,13 @@ class IHM:
         self.choix_frame = tk.Frame(self.root, bg=BG_COLOR)
         self.choix_frame.pack(pady=10)
 
-        # Label pour les messages
+        # Label pour les messages centré
         self.msg_label = tk.Label(
             self.root, text="", font=self.font_msg,
             fg=MSG_COLOR, bg=BG_COLOR, wraplength=800, justify="center"
         )
-        self.msg_label.pack(pady=20)
+        # Centrer le label au milieu de l'écran
+        self.msg_label.place(relx=0.5, rely=0.6, anchor="center")
 
     def demander_choix(self, question, listeChoix):
         self.question_label.config(text=question)
@@ -77,9 +78,11 @@ class IHM:
         """Transmet le choix au contrôleur et affiche un feedback."""
         self.controller.choix_fait(choix)
         self.afficher_message(f"Vous avez choisi : {choix}")
+        self.afficher_message("Veuillez scanner votre badge RFID")
+        # Le message "Veuillez scanner votre badge RFID" peut être affiché via le Controller après reset
 
     def afficher_message(self, message):
-        """Message statique professionnel sous la question."""
+        """Affiche un message centré à l'écran."""
         self.msg_label.config(text=message)
 
     def demarrer(self):
