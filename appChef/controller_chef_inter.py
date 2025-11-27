@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 import random, json
 from paho.mqtt import client as mqtt_client
-from vote import Vote
+from statistiques import Statistique
 
 
 # --- Config MQTT ---
@@ -28,7 +28,6 @@ class InterfaceChef:
 
     def __init__(self, controller):
         self.controller = controller
-        self.topic_vote = 'cantine/pupitre/+/vote'
         self.topic_stats = 'cantine/stats_votes'
         self.stats = None  # Mis à jour automatiquement
         self.client_id = f'Chef-{random.randint(0, 1000)}'
@@ -38,6 +37,7 @@ class InterfaceChef:
         self.client.on_message = self.on_message
         self.client.connect(BROKER, PORT)
         self.client.loop_start()
+        
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print("Connecté au broker MQTT pour les votes")
@@ -47,45 +47,17 @@ class InterfaceChef:
             print(f"Erreur connexion MQTT, code {rc}")
 
     def on_message(self, client, userdata, msg):
-        try:
-            payload_str = msg.payload.decode('utf-8').strip()
-            if not payload_str:
-                return
-            
-            # ✅ Mise à jour SILENCIEUSE des statistiques
-            if msg.topic == self.topic_stats:
-                try:
-                    self.stats = json.loads(payload_str)
-                    # Pas de print ici - mise à jour silencieuse
-                except Exception as e:
-                    print(f"Erreur parsing stats: {e}")
-                return
-            
-            # Traiter les votes normaux
-            try:
-                payload = json.loads(payload_str)
-                vote = Vote.fromJson(payload)
-                vote_str = f"ID: {vote.id} → {vote.choix}"
-            except Exception:
-                vote_str = f"Vote reçu: {payload_str}"
-            self.controller.ajouter_vote(vote_str)
-        except Exception as e:
-            print(f"Erreur traitement vote: {e}")
+        payload_str = msg.payload.decode('utf-8').strip()
+        print(f"Message reçu sur {msg.topic} : {payload_str}")
 
-    def envoyerVote(self, vote):
-        msg = vote.toJson()
-        self.client.publish(f'cantine/pupitre/{vote.id}/vote', msg)
-        vote_str = f"TON VOTE: ID={vote.id} → {vote.choix}"
-        self.controller.ajouter_vote(vote_str)
+        self.stats = json.loads(payload_str)
 
     def envoyerQuestion(self, question, choix):
         message = {"question": question, "choix": choix}
         self.client.publish(TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
 
-
 class IHM:
-    """Dashboard moderne et élégant Tkinter avec scroll pour votes."""
-
+    
     def __init__(self, controller):
         self.controller = controller
         self.root = tk.Tk()
@@ -130,7 +102,7 @@ class IHM:
         
         self.bottom_frame = tk.Frame(self.root, bg=BG_COLOR)
         self.bottom_frame.pack(pady=15)
-        
+
         # Bouton : Modifier la question
         self.btn_modifier = tk.Button(
             self.bottom_frame,
@@ -165,11 +137,7 @@ class IHM:
         )
         self.btn_statistique.pack(side="left", padx=10)
 
-        # Compteur de votes
-        self.vote_count = 0
-        self.label_count = tk.Label(self.root, text=f"Votes reçus : {self.vote_count}",
-                                    font=self.font_vote, fg=TEXT_COLOR, bg=BG_COLOR)
-        self.label_count.pack(pady=5)
+
 
     def demander_choix(self, question, listeChoix=None):
         self.label_question.config(text=question)
@@ -189,7 +157,7 @@ class IHM:
         card.after(700, lambda: card.config(bg=CARD_COLOR))
 
         self.vote_count += 1
-        self.label_count.config(text=f"Votes reçus : {self.vote_count}")
+        self.label_count.config(text=f"{self.vote_count}")
         self.canvas.yview_moveto(1.0)
 
     def demander_modification(self):
@@ -201,41 +169,42 @@ class IHM:
             return
         listeChoix = [c.strip() for c in choix_str.split(",")]
         self.controller.modifierQuestion(question, listeChoix)
-        
+
     def voir_stat(self):
-        """Affiche les statistiques EN TEMPS RÉEL à chaque clic."""
         stats = self.controller.obtenir_statistiques()
-        
+
         if not stats or "stats" not in stats:
-            messagebox.showwarning("Statistiques", "Aucune statistique disponible pour le moment.")
+            self.label_stats.config(text="Aucune statistique disponible pour le moment.")
             return
-        
-        stats_list = stats["stats"]
-        if len(stats_list) < 2:
-            messagebox.showwarning("Statistiques", "Données insuffisantes.")
+
+        votes_par_choix = stats["stats"]
+        if len(votes_par_choix) < 1:
+            self.label_stats.config(text="Données insuffisantes.")
             return
-        
-        total_votes = stats_list[-1]
-        votes_par_choix = stats_list[:-1]
-        
+
+        total_votes = sum(votes_par_choix)
         if total_votes == 0:
-            messagebox.showinfo("Statistiques", "Aucun vote enregistré.")
+            self.label_stats.config(text="Aucun vote enregistré.")
             return
-        
-        # Calculer les pourcentages
-        message = "📊 Statistiques des votes\n\n"
-        choix_noms = self.controller.listeChoix if hasattr(self.controller, 'listeChoix') else None
-        
-        for i, nb_votes in enumerate(votes_par_choix):
-            pourcentage = (nb_votes / total_votes) * 100
-            if choix_noms and i < len(choix_noms):
-                nom_choix = choix_noms[i]
-                message += f"{nom_choix}: {nb_votes} votes ({pourcentage:.1f}%)\n"
-            else:
-                message += f"Choix {i+1}: {nb_votes} votes ({pourcentage:.1f}%)\n"
-        
-        message += f"\n✅ Total: {total_votes} votes"
-        messagebox.showinfo("Statistiques des votes", message)
+
+        # Appel de la fonction de calcul
+        pourcentages = Statistique.calculer_pourcentages(stats)
+        if pourcentages is None:
+            self.label_stats.config(text="Erreur lors du calcul des pourcentages.")
+            return
+
+        # Construction du texte à afficher sous la question
+        lignes = ["📊 Statistiques des votes:"]
+        for i, nb_votes in enumerate(votes_par_choix, start=1):
+            p = pourcentages[i - 1]
+            lignes.append(f"Choix {i}: {nb_votes} votes ({p:.1f}%)")
+
+        lignes.append(f"Total: {total_votes} votes")
+        self.label_stats.config(text="\n".join(lignes))
+
+
+
+
 
     def start(self):
         self.root.mainloop()
@@ -266,9 +235,8 @@ class ControllerChef:
 
     def envoyer_vote(self, vote):
         self.interface_mqtt.envoyerVote(vote)
-    
+
     def obtenir_statistiques(self):
-        """Retourne les stats actuelles (temps réel)."""
         return self.interface_mqtt.stats
 
     def start(self):

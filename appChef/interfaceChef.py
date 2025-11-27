@@ -1,6 +1,5 @@
 import random, json
 from paho.mqtt import client as mqtt_client
-from vote import Vote
 
 
 class InterfaceChef:
@@ -63,9 +62,8 @@ class InterfaceChef:
 
     def envoyerQuestion(self, question, choix):
         message = {"question": question, "choix": choix}
-        self.client.publish(self.TOPIC_QUESTION, json.dumps(message, ensure_ascii=False))
+        self.client.publish(self.TOPIC_QUESTION, json.dumps(message, ensure_ascii=False), retain=True)
 
     def lireVote(self):
         return self.dernier_vote
     
-    def calculerStatistiques(self):

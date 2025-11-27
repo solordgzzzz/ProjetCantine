@@ -22,7 +22,7 @@ class IHM:
         # Ouvrir en plein écran et s'adapte à toutes les résolutions
         try:
             self.root.state('zoomed')  # Windows
-        except:
+        except Exception:
             self.root.attributes('-fullscreen', True)  # Mac / Linux
 
         self.root.resizable(True, True)
@@ -39,8 +39,14 @@ class IHM:
         self.question_frame.pack(pady=20, padx=20, fill="x")
 
         self.question_label = tk.Label(
-            self.question_frame, text="", font=self.font_title,
-            fg=TEXT_COLOR, bg=CARD_COLOR, wraplength=800, justify="center", pady=20
+            self.question_frame,
+            text="",
+            font=self.font_title,
+            fg=TEXT_COLOR,
+            bg=CARD_COLOR,
+            wraplength=800,
+            justify="center",
+            pady=20,
         )
         self.question_label.pack()
 
@@ -50,8 +56,13 @@ class IHM:
 
         # Label pour les messages centré
         self.msg_label = tk.Label(
-            self.root, text="", font=self.font_msg,
-            fg=MSG_COLOR, bg=BG_COLOR, wraplength=800, justify="center"
+            self.root,
+            text="",
+            font=self.font_msg,
+            fg=MSG_COLOR,
+            bg=BG_COLOR,
+            wraplength=800,
+            justify="center",
         )
         # Centrer le label au milieu de l'écran
         self.msg_label.place(relx=0.5, rely=0.6, anchor="center")
@@ -63,10 +74,17 @@ class IHM:
 
         for idx, choix in enumerate(listeChoix):
             b = tk.Button(
-                self.choix_frame, text=choix, width=30, font=self.font_button,
-                bg=BUTTON_COLOR, fg="white", activebackground=BUTTON_HOVER,
-                activeforeground="white", bd=0, relief="flat",
-                command=lambda i=idx+1: self.on_choix(i)
+                self.choix_frame,
+                text=choix,
+                width=30,
+                font=self.font_button,
+                bg=BUTTON_COLOR,
+                fg="white",
+                activebackground=BUTTON_HOVER,
+                activeforeground="white",
+                bd=0,
+                relief="flat",
+                command=lambda i=idx + 1: self.on_choix(i),
             )
             b.pack(pady=8)
 
@@ -79,7 +97,6 @@ class IHM:
         self.controller.choix_fait(choix)
         self.afficher_message(f"Vous avez choisi : {choix}")
         self.afficher_message("Veuillez scanner votre badge RFID")
-        # Le message "Veuillez scanner votre badge RFID" peut être affiché via le Controller après reset
 
     def afficher_message(self, message):
         """Affiche un message centré à l'écran."""

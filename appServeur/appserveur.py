@@ -3,7 +3,7 @@ from paho.mqtt import client as mqtt_client
 from vote import Vote
 
 
-class AppVote:
+class appServeur:
 
     BROKER = '192.168.190.17'
     PORT = 1883
