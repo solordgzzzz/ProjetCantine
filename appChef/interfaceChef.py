@@ -4,7 +4,7 @@ from paho.mqtt import client as mqtt_client
 
 class InterfaceChef:
 
-    BROKER = '192.168.190.17'
+    BROKER = '192.168.190.15'
     PORT = 1883
     TOPIC_QUESTION = 'cantine/question'
     TOPIC_VOTES = 'cantine/statsvotes'

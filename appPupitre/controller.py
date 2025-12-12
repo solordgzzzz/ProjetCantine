@@ -5,9 +5,11 @@ from ihm_inter import IHM
 import paho.mqtt.client as mqtt
 import json
 import threading
+import time
+
 
 # --- Config MQTT ---
-BROKER = '192.168.190.17'
+BROKER = '192.168.190.15'
 PORT = 1883
 TOPIC_QUESTION = 'cantine/question'
 USERNAME = "crdg"
@@ -76,7 +78,7 @@ class Controller:
         self.ihm.afficher_message("Badge détecté ! Veuillez voter.")
         self.ihm.demander_choix(self.question, self.listeChoix)
 
-    # Traitement du choix effectué
+        # Traitement du choix effectué
     def choix_fait(self, choix):
         if self.id_votant is not None:
             vote = Vote(self.id_votant, choix)
@@ -88,9 +90,17 @@ class Controller:
 
             # --- RESET DE L'IHM APRÈS CHAQUE VOTE ---
             self.id_votant = None
-            self.ihm.demander_choix("", [])                # Supprime question et boutons
-            self.ihm.afficher_message("Veuillez scanner votre badge RFID")  # Message scanner badge
-            self.demander_badge()                           # Lance nouveau scan pour le prochain votant
+            self.ihm.demander_choix("", [])
+            self.ihm.afficher_message("Merci ! Vote enregistré.")
+
+            # --- AJOUT : PAUSE DE 2 SECONDES AVANT NOUVEAU BADGE ---
+            def relancer_scan():
+                time.sleep(2)
+                self.ihm.afficher_message("Veuillez scanner votre badge RFID")
+                self.demander_badge()
+
+            threading.Thread(target=relancer_scan, daemon=True).start()
+
 
 
     # Modifier la question et la publier via MQTT

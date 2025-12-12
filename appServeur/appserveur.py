@@ -5,7 +5,7 @@ from vote import Vote
 
 class appServeur:
 
-    BROKER = '192.168.190.17'
+    BROKER = '192.168.190.15'
     PORT = 1883
     TOPIC_VOTES = 'cantine/stats_votes'
     USERNAME = "crdg"

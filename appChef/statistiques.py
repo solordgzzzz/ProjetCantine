@@ -4,7 +4,7 @@ import random, json
 from paho.mqtt import client as mqtt_client
 
 # --- Config MQTT ---
-BROKER = '192.168.190.17'
+BROKER = '192.168.190.15'
 PORT = 1883
 TOPIC_QUESTION = 'cantine/question'
 USERNAME = "crdg"

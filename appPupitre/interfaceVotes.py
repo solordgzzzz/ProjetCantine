@@ -5,7 +5,7 @@ from vote import Vote
 
 class InterfaceVotes:
 
-    BROKER = '192.168.190.17'
+    BROKER = '192.168.190.15'
     PORT = 1883
     TOPIC_QUESTION = 'cantine/question'
     USERNAME = "crdg"
