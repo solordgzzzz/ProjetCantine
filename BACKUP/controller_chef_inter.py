@@ -156,6 +156,41 @@ class IHM:
                                       command=self.demander_modification)
         self.btn_modifier.pack(side="left", padx=10)
 
+        # --- Nouveau bouton : Calculer statistiques ---
+        self.btn_calculer_stats = tk.Button(
+            self.bottom_frame,
+            text="Calculer statistiques",
+            font=self.font_button,
+            bg=BUTTON_COLOR,
+            fg="white",
+            activebackground=BUTTON_HOVER,
+            activeforeground="white",
+            padx=20,
+            pady=10,
+            bd=0,
+            relief="flat",
+            command=self.action_calculer_stats  # fonction vide pour l'instant
+        )
+        self.btn_calculer_stats.pack(side="left", padx=10)
+
+        # --- Nouveau bouton : Créer statistique ---
+        self.btn_creer_stats = tk.Button(
+            self.bottom_frame,
+            text="Créer statistique",
+            font=self.font_button,
+            bg=BUTTON_COLOR,
+            fg="white",
+            activebackground=BUTTON_HOVER,
+            activeforeground="white",
+            padx=20,
+            pady=10,
+            bd=0,
+            relief="flat",
+            command=self.action_creer_stats  # fonction vide pour l'instant
+        )
+        self.btn_creer_stats.pack(side="left", padx=10)
+
+
         self.vote_count = 0
         self.label_count = tk.Label(self.bottom_frame, text="0", font=self.font_button,
                                     fg=TEXT_COLOR, bg=BG_COLOR)
@@ -167,7 +202,7 @@ class IHM:
         self.label_question.config(text=question)
 
     def afficher_message(self, message):
-        messagebox.showinfo("Information", message, parent=self.root)
+        messagebox.showinfo("Information", message)
 
     def ajouter_vote(self, vote_str):
         self.root.after(0, self._add_vote_card, vote_str)
@@ -186,59 +221,14 @@ class IHM:
         self.canvas.yview_moveto(1.0)
 
     def demander_modification(self):
-        """Popup stylée pour modifier la question et les choix, centrée à l'écran."""
-        win = tk.Toplevel(self.root)
-        win.title("Modifier la question")
-        win.configure(bg=BG_COLOR)
-        win_width, win_height = 500, 350
-
-        # Calcul pour centrer la fenêtre
-        screen_width = win.winfo_screenwidth()
-        screen_height = win.winfo_screenheight()
-        x = (screen_width // 2) - (win_width // 2)
-        y = (screen_height // 2) - (win_height // 2)
-        win.geometry(f"{win_width}x{win_height}+{x}+{y}")
-
-        win.grab_set()  # fenêtre modale
-        win.focus_set()
-
-        # Titre
-        tk.Label(win, text="Nouvelle question :", bg=BG_COLOR, fg=TEXT_COLOR,
-                font=self.font_vote).pack(pady=(20, 5), padx=20, anchor="w")
-
-        entry_question = tk.Entry(win, font=self.font_vote, width=50)
-        entry_question.pack(pady=5, padx=20)
-
-        tk.Label(win, text="Choix (séparés par des virgules) :", bg=BG_COLOR, fg=TEXT_COLOR,
-                font=self.font_vote).pack(pady=(20, 5), padx=20, anchor="w")
-
-        entry_choix = tk.Entry(win, font=self.font_vote, width=50)
-        entry_choix.pack(pady=5, padx=20)
-
-        # Boutons valider / annuler
-        frame_buttons = tk.Frame(win, bg=BG_COLOR)
-        frame_buttons.pack(pady=30)
-
-        def valider():
-            question = entry_question.get().strip()
-            choix_str = entry_choix.get().strip()
-            if not question or not choix_str:
-                messagebox.showwarning("Attention", "Veuillez remplir tous les champs.", parent=win)
-                return
-            listeChoix = [c.strip() for c in choix_str.split(",")]
-            self.controller.modifierQuestion(question, listeChoix)
-            win.destroy()
-
-        tk.Button(frame_buttons, text="Valider", command=valider,
-                bg=BUTTON_COLOR, fg="white", font=self.font_button,
-                activebackground=BUTTON_HOVER, activeforeground="white",
-                padx=15, pady=5).pack(side="left", padx=10)
-
-        tk.Button(frame_buttons, text="Annuler", command=win.destroy,
-                bg="#9ca3af", fg="white", font=self.font_button,
-                activebackground="#6b7280", activeforeground="white",
-                padx=15, pady=5).pack(side="left", padx=10)
-
+        question = simpledialog.askstring("Nouvelle question", "Entrez la nouvelle question :")
+        if not question:
+            return
+        choix_str = simpledialog.askstring("Choix", "Entrez les choix séparés par des virgules :")
+        if not choix_str:
+            return
+        listeChoix = [c.strip() for c in choix_str.split(",")]
+        self.controller.modifierQuestion(question, listeChoix)
 
     def voir_stat(self):
         stats = self.controller.obtenir_statistiques()
@@ -277,13 +267,21 @@ class IHM:
         self.ax_pie.axis("equal")
         self.canvas_pie.draw()
 
+    def action_calculer_stats(self):
+    # Pour l'instant ne fait rien
+        pass
+
+    def action_creer_stats(self):
+        # Pour l'instant ne fait rien
+        pass
+  
+
     def mettre_a_jour_stats(self):
         self.voir_stat()
         self.root.after(1000, self.mettre_a_jour_stats)
 
     def start(self):
         self.root.mainloop()
-
 
 
 class ControllerChef:

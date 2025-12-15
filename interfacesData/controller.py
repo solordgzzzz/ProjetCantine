@@ -7,12 +7,11 @@ class Controller :
 
     def __init__(self):
         self.interface_data = InterfaceData()
-        self.id_statistiques = 29
-        self.id_question = 5
+        self.id_statistiques = self.interface_data.obtenir_derniere_stat()
+        self.id_question = self.interface_data.obtenir_derniere_question()
         self.mqtt = MqttServer(self.id_statistiques, self.interface_data)
         self.mqtt.connecter_mqtt()
         self.date_ajd = datetime.date.today()
-        self.datejour = "2025-12-12"
 
 
     def enregistrer_vote(self, date, choix, idUser):
@@ -20,17 +19,24 @@ class Controller :
         print("Vote enregistré")
 
     def enregistrer_question(self, question, listechoix):
-        self.interface_data.Ajouter_question(question, listechoix)
+        self.id_question = self.interface_data.Ajouter_question(question, listechoix)
         print("question enregistré")
+        # mettre à jour la statistique en cours
+        self.id_question = self.interface_data.obtenir_derniere_question()
+        self.interface_data.mettre_a_jour_question_stat(self.id_statistiques, self.id_question)
+
 
     
-    def creer_statistique(self,date, idQuestion):
-        self.interface_data.ajouter_stat(date, idQuestion)
+    def creer_statistique(self,date):
+        self.id_question = self.interface_data.obtenir_derniere_question()
+        self.interface_data.ajouter_stat(date, self.id_question)
+        self.id_statistiques = self.interface_data.obtenir_derniere_stat()
+
         print("stats creer")
 
-    def calculer_Statistiques(self, datejour):
+    def calculer_Statistiques(self):
         
-        liste_vote = self.interface_data.Obtenir_Vote(self.datejour)
+        liste_vote = self.interface_data.Obtenir_Vote(self.date_ajd)
 
         total_choix1 = 0
         total_choix2 = 0
@@ -53,7 +59,9 @@ class Controller :
 
         stats = (self.id_statistiques, total_choix1, total_choix2, total_choix3, total_choix4, total_vote)
 
-        self.interface_data.modifier_stat(self.datejour, total_choix1, total_choix2, total_choix3, total_choix4, total_vote)
+        self.interface_data.modifier_stat(self.date_ajd, total_choix1, total_choix2, total_choix3, total_choix4, total_vote)
+        stats_mqtt = {'stats' : [total_choix1, total_choix2, total_choix3, total_choix4]}
+        self.mqtt.EnvoyerStats(stats_mqtt)
 
     def boucle(self):
         
@@ -63,12 +71,13 @@ class Controller :
             choix_du_chef = input("1 pour creér et 2 pour calculer :")
             #si il est 8h00 alors créer statistique
             if choix_du_chef =="1":
-                self.creer_statistique(self.date_ajd, self.id_question)
+                self.date_ajd = datetime.date.today()
+                self.creer_statistique(self.date_ajd)
 
             #si il est 14h00 alors créer statistique
             elif choix_du_chef == "2":
-                datejour = self.datejour
-                self.calculer_Statistiques(datejour)
+                self.calculer_Statistiques()
+                
 
 
 controller = Controller()

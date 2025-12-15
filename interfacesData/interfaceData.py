@@ -65,6 +65,7 @@ class InterfaceData:
         WHERE date = %s
         """
         val = (stat_choix1, stat_choix2, stat_choix3, stat_choix4, nombre_vote, date)
+        stats_mqtt = {'stats': [stat_choix1, stat_choix2, stat_choix3, stat_choix4]}
         try:
             mycursor.execute(sql, val)
             mydb.commit()
@@ -75,10 +76,38 @@ class InterfaceData:
         except mysql.connector.Error as err:
             print(f"Erreur lors de la mise à jour : {err}")
 
+    def obtenir_derniere_stat(self) :
+        mycursor = mydb.cursor()
+        sql = f"SELECT id FROM statistiques order by id desc limit 1"
+        mycursor.execute(sql)
+        statistique = mycursor.fetchone()
+        print(statistique[0])
+        return statistique[0]
+
+
     def Ajouter_question(self, question, choix1, choix2, choix3, choix4):
         mycursor = mydb.cursor()
         sql = "INSERT INTO question (question, choix1, choix2, choix3 , choix4) VALUES (%s, %s, %s, %s , %s)"
         val = (question, choix1, choix2, choix3 , choix4)
         mycursor.execute(sql, val) 
         mydb.commit()
-        print(mycursor.rowcount, "record inserted.")
+        print(mycursor.rowcount, "Question add")
+
+        return self.obtenir_derniere_question()
+
+
+    def obtenir_derniere_question(self) :
+        mycursor = mydb.cursor()
+        sql = f"SELECT id FROM question order by id desc limit 1"
+        mycursor.execute(sql)
+        question = mycursor.fetchone()
+        print(question[0])
+        return question[0]
+    
+    def mettre_a_jour_question_stat(self, id_statistiques_actuelle, id_question):
+        mycursor = mydb.cursor()
+        sql = "UPDATE statistiques SET idquestion = %s WHERE id = %s"
+        val = (id_question, id_statistiques_actuelle)
+        mycursor.execute(sql, val) 
+        mydb.commit()
+        print(mycursor.rowcount, "id Question modifier")

@@ -14,6 +14,7 @@ class MqttServer:
     TOPIC_QUESTION = 'cantine/question'
     USERNAME = "crdg"
     PASSWORD = "crdg*123"
+    TOPIC_VOTES = 'cantine/stats_votes'
 
     def __init__(self, id_statistiques, interfaceData):
         self.topic = f'cantine/pupitre/1/vote'
@@ -56,3 +57,6 @@ class MqttServer:
     def deconnecter_mqtt(self):
         self.client.disconnect()
         self.client.loop_stop()
+
+    def EnvoyerStats(self, stats_mqtt):
+        return self.client.publish(self.TOPIC_VOTES, json.dumps(stats_mqtt, ensure_ascii=False),qos= 1, retain=True)
